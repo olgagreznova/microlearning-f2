@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Microlearning in Language Teaching – Student Knowledge Check Map</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f0f2f5;
+    color: #2c3e50;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white;
+    padding: 16px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    position: relative;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header h1 { font-size: 1.4rem; font-weight: 600; }
+  .header-subtitle { font-size: 0.85rem; opacity: 0.9; margin-top: 2px; }
+  .header-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  .header-btn {
+    padding: 6px 14px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  .header-btn:hover { background: rgba(255,255,255,0.25); }
+  .progress-info { font-size: 0.85rem; opacity: 0.95; margin-right: 12px; align-self: center; }
+
+  /* Map Canvas */
+  .map-container {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 70px);
+    overflow: hidden;
+    background: #e8ecf1;
+    cursor: grab;
+  }
+  .map-container.dragging { cursor: grabbing; }
+  .map-canvas {
+    position: absolute;
+    width: 2400px;
+    height: 1600px;
+    transform-origin: 0 0;
+    transition: transform 0.1s ease-out;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Map Nodes */
+  .map-node {
+    position: absolute;
+    width: 280px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.3s;
+    border-left: 5px solid #4f46e5;
+  }
+  .map-node:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  }
+  .map-node.completed { border-left-color: #10b981; }
+  .map-node.completed .node-header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+  .node-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white;
+    padding: 14px 16px;
+    border-radius: 12px 12px 0 0;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .node-body { padding: 16px; }
+  .node-title { font-size: 1rem; font-weight: 600; margin-bottom: 6px; color: #1e293b; }
+  .node-desc { font-size: 0.85rem; color: #64748b; line-height: 1.4; }
+  .node-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background: #e0e7ff;
+    color: #4338ca;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-top: 8px;
+    font-weight: 500;
+  }
+
+  /* Zoom Controls */
+  .zoom-controls {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 50;
+  }
+  .zoom-btn {
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #475569;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .zoom-btn:hover { background: #f8fafc; border-color: #94a3b8; }
+
+  /* Instructions Bar */
+  .instructions-bar {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    font-size: 0.85rem;
+    color: #475569;
+    z-index: 50;
+    white-space: nowrap;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white;
+    padding: 18px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-title { font-size: 1.15rem; font-weight: 600; }
+  .modal-close {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.2s;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.3); }
+  .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+  .modal-footer {
+    padding: 16px 24px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-nav-btn {
+    padding: 8px 18px;
+    background: #4f46e5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .modal-nav-btn:hover { background: #4338ca; }
+  .modal-nav-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+  .modal-nav-btn.secondary { background: white; color: #475569; border: 1px solid #cbd5e1; }
+  .modal-nav-btn.secondary:hover { background: #f1f5f9; }
+  .modal-progress { font-size: 0.9rem; color: #64748b; font-weight: 500; }
+
+  /* Question Styles */
+  .question-container { margin-bottom: 24px; }
+  .question-text { font-size: 1.05rem; font-weight: 600; margin-bottom: 16px; color: #1e293b; }
+  .match-area { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 750px) { .match-area { grid-template-columns: 1fr; } }
+
+  .match-column {
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
+  }
+  .match-column-title { font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .draggable-item {
+    background: white;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    border: 2px solid #e2e8f0;
+    cursor: grab;
+    transition: all 0.2s;
+    font-size: 0.88rem;
+    line-height: 1.4;
+  }
+  .draggable-item:hover { border-color: #4f46e5; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(79, 70, 229, 0.15); }
+  .draggable-item.dragging { opacity: 0.5; cursor: grabbing; }
+  .draggable-item.short { font-weight: 600; text-align: center; }
+
+  .drop-zone {
+    background: white;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    border: 2px dashed #cbd5e1;
+    min-height: 80px;
+    transition: all 0.2s;
+    font-size: 0.88rem;
+    line-height: 1.4;
+  }
+  .drop-zone.drag-over { border-color: #4f46e5; background: #eef2ff; }
+  .drop-zone.filled { border-style: solid; border-color: #4f46e5; background: #eef2ff; }
+  .drop-zone.correct { border-color: #10b981; background: #d1fae5; }
+  .drop-zone.incorrect { border-color: #ef4444; background: #fee2e2; }
+
+  .drop-zone .matched-text {
+    margin-top: 8px;
+    padding: 8px;
+    background: white;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    border: 1px solid #e2e8f0;
+  }
+  .drop-zone .correct-answer-hint {
+    font-size: 0.82rem;
+    color: #065f46;
+    margin-top: 8px;
+    font-style: italic;
+    padding: 8px;
+    background: rgba(16, 185, 129, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid #10b981;
+  }
+  .drop-zone .map-redirect-hint {
+    font-size: 0.82rem;
+    color: #991b1b;
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid #ef4444;
+    font-weight: 500;
+  }
+
+  /* Feedback Box */
+  .feedback-box {
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 8px;
+    display: none;
+  }
+  .feedback-box.show { display: block; animation: fadeIn 0.3s ease; }
+  .feedback-box.success { background: #d1fae5; border-left: 4px solid #10b981; color: #065f46; }
+  .feedback-box.error { background: #fee2e2; border-left: 4px solid #ef4444; color: #991b1b; }
+  .feedback-box.partial { background: #fef3c7; border-left: 4px solid #f59e0b; color: #78350f; }
+  .feedback-box h3 { margin-bottom: 8px; font-size: 1.05rem; }
+  .feedback-box p { font-size: 0.9rem; line-height: 1.5; }
+  .feedback-box .explain { margin-top: 8px; font-size: 0.88rem; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* How to Use Modal Content */
+  .how-to-use-content { line-height: 1.6; font-size: 0.95rem; color: #334155; }
+  .how-to-use-content h3 { margin-top: 16px; margin-bottom: 8px; color: #1e293b; font-size: 1rem; }
+  .how-to-use-content ul { margin-left: 20px; margin-bottom: 12px; }
+  .how-to-use-content li { margin-bottom: 6px; }
+  .highlight { background: #fef3c7; padding: 2px 4px; border-radius: 4px; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Microlearning in Language Teaching</h1>
+    <div class="header-subtitle">Complete the map to check what you have understood from the full map</div>
+  </div>
+  <div class="header-controls">
+    <div class="progress-info" id="progressInfo">Completed sections: 0 of 3</div>
+    <button class="header-btn" id="mapBtn">Map</button>
+    <button class="header-btn" id="outlineBtn">Outline</button>
+    <button class="header-btn" id="firstTopicBtn">Open first topic</button>
+    <button class="header-btn" id="resetBtn">Reset answers</button>
+    <button class="header-btn" id="howToUseBtn">How to use</button>
+  </div>
+</div>
+
+<div class="map-container" id="mapContainer">
+  <div class="instructions-bar">
+    Select a topic · Drag the map to move · Use + / − to zoom
+  </div>
+
+  <div class="map-canvas" id="mapCanvas">
+    <!-- Map nodes rendered by JS -->
+  </div>
+
+  <div class="zoom-controls">
+    <button class="zoom-btn" id="zoomInBtn" title="Zoom In">+</button>
+    <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">−</button>
+    <button class="zoom-btn" id="zoomResetBtn" title="Reset View">⌂</button>
+  </div>
+</div>
+
+<!-- Knowledge Check Modal -->
+<div class="modal-overlay" id="topicModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Knowledge Check</div>
+      <button class="modal-close" id="modalClose">×</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- Questions rendered here -->
+    </div>
+    <div class="modal-footer">
+      <button class="modal-nav-btn secondary" id="prevBtn" disabled>← Previous</button>
+      <div class="modal-progress" id="modalProgress">1 / 8</div>
+      <button class="modal-nav-btn" id="nextBtn">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- How to Use Modal -->
+<div class="modal-overlay" id="howToUseModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">How to use this map</div>
+      <button class="modal-close" id="howToUseClose">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="how-to-use-content">
+        <p>Work through the three topics. Match section ideas, check claims against the map, and locate specific details.</p>
+
+        <h3>How it works</h3>
+        <ul>
+          <li>Drag answer cards into matching spaces and select <strong>"Check answers"</strong> to receive feedback.</li>
+          <li>In Topic 02 you choose between <strong>True</strong>, <strong>False</strong> and <strong>Not stated</strong>. Choose <em>Not stated</em> only if the full map says nothing about the claim.</li>
+          <li>If an answer is incorrect, the feedback points you to the <strong>exact section of the full map</strong> to revisit.</li>
+          <li>Your answers are saved in this browser.</li>
+        </ul>
+
+        <p style="margin-top: 16px;"><strong>Got it?</strong> Close this window and click on a topic node to begin!</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA: Knowledge Check aligned with the Microlearning Map.
+// Topic 01 uses "Why do we use..." questions covering core concepts,
+// benefits and risks.
+// Topic 02 uses plain True / False / Not stated options.
+// Topic 03 matches research theories to microlearning.
+// ============================================================
+const TFNS = [
+  { key: "true",  text: "True" },
+  { key: "false", text: "False" },
+  { key: "ns",    text: "Not stated" }
+];
+
+const topicsData = [
+  {
+    id: 0,
+    number: "01",
+    title: "Why do we use microlearning?",
+    description: "Match each 'why' question to the reason the map gives — covering design, benefits and risks",
+    mapNodeRef: "Core Concepts · Benefits · Risks",
+    position: { x: 200, y: 200 },
+    questions: [
+      {
+        id: "q1",
+        question: "Why do we use microlearning in language teaching?",
+        leftItems: ["Why do we use microlearning in language teaching?"],
+        rightItems: [
+          { key: "a", text: "To replace full lessons with short videos so teachers no longer need to plan" },
+          { key: "b", text: "To reduce cognitive load, improve retention through spacing, and fit naturally into learners' fragmented daily routines" },
+          { key: "c", text: "To shorten the curriculum so learners can finish a course in half the time" }
+        ],
+        correctMatches: { "Why do we use microlearning in language teaching?": "b" },
+        feedbackRef: "Core Concepts"
+      },
+      {
+        id: "q2",
+        question: "Why do we use semantic chunking in microlearning design?",
+        leftItems: ["Why do we use semantic chunking?"],
+        rightItems: [
+          { key: "a", text: "To fit as many language points as possible into one short clip and reduce the number of modules" },
+          { key: "b", text: "To group content by meaningful boundaries and pair each chunk with a quick formative check" },
+          { key: "c", text: "To make videos look visually attractive by adding more information per screen" }
+        ],
+        correctMatches: { "Why do we use semantic chunking?": "b" },
+        feedbackRef: "Design Principles"
+      },
+      {
+        id: "q3",
+        question: "Why do we use a single learning objective per micro-module?",
+        leftItems: ["Why do we use a single learning objective?"],
+        rightItems: [
+          { key: "a", text: "So that one 5-minute activity can cover vocabulary, grammar and pronunciation at the same time" },
+          { key: "b", text: "To keep working memory from being overloaded and to make the success criteria clear for the learner" },
+          { key: "c", text: "To allow learners to choose any topic they want without teacher guidance" }
+        ],
+        correctMatches: { "Why do we use a single learning objective?": "b" },
+        feedbackRef: "Design Principles"
+      },
+      {
+        id: "q4",
+        question: "Why do we use micro-assessments with immediate feedback?",
+        leftItems: ["Why do we use micro-assessments?"],
+        rightItems: [
+          { key: "a", text: "To generate formal grades that rank learners against each other" },
+          { key: "b", text: "To reinforce neural pathways quickly through low-stakes, immediate corrective feedback" },
+          { key: "c", text: "To replace teacher observation so the teacher can focus on other classes" }
+        ],
+        correctMatches: { "Why do we use micro-assessments?": "b" },
+        feedbackRef: "Design Principles"
+      },
+      {
+        id: "q5",
+        question: "Why do we use spaced repetition alongside microlearning?",
+        leftItems: ["Why do we use spaced repetition?"],
+        rightItems: [
+          { key: "a", text: "To combat the forgetting curve by revisiting items at increasing intervals after initial exposure" },
+          { key: "b", text: "To make sure learners see the same content many times in the same lesson" },
+          { key: "c", text: "To replace the need for any form of retrieval practice" }
+        ],
+        correctMatches: { "Why do we use spaced repetition?": "a" },
+        feedbackRef: "Research"
+      },
+      {
+        id: "q6",
+        question: "Why do we use low-stakes micro-tasks to lower the affective filter?",
+        leftItems: ["Why do we use low-stakes micro-tasks?"],
+        rightItems: [
+          { key: "a", text: "Because short, achievable bursts reduce anxiety and allow input to reach the language acquisition device" },
+          { key: "b", text: "Because they remove the need for any teacher feedback or correction" },
+          { key: "c", text: "Because they make the lesson longer and more formal, which learners prefer" }
+        ],
+        correctMatches: { "Why do we use low-stakes micro-tasks?": "a" },
+        feedbackRef: "Benefits"
+      },
+      {
+        id: "q7",
+        question: "Why do we need to integrate micro-modules into a broader curriculum? (Risk)",
+        leftItems: ["Why do we need to integrate micro-modules?"],
+        rightItems: [
+          { key: "a", text: "To avoid fragmentation — short bursts without links to a wider syllabus leave learners with disconnected pieces of knowledge" },
+          { key: "b", text: "To make sure learners spend more time on the platform each day" },
+          { key: "c", text: "To replace all other forms of language practice with microlearning content" }
+        ],
+        correctMatches: { "Why do we need to integrate micro-modules?": "a" },
+        feedbackRef: "Limitations"
+      },
+      {
+        id: "q8",
+        question: "Why is microlearning NOT suitable for deep literary analysis? (Limitation)",
+        leftItems: ["Why is microlearning NOT suitable for deep literary analysis?"],
+        rightItems: [
+          { key: "a", text: "Because it requires expensive software that schools cannot afford" },
+          { key: "b", text: "Because complex, multi-layered interpretation needs sustained, extended engagement that short bursts cannot provide" },
+          { key: "c", text: "Because learners are not allowed to read long texts when using microlearning" }
+        ],
+        correctMatches: { "Why is microlearning NOT suitable for deep literary analysis?": "b" },
+        feedbackRef: "Limitations"
+      }
+    ]
+  },
+  {
+    id: 1,
+    number: "02",
+    title: "Check predictions & locate details",
+    description: "Decide whether each claim is True, False or Not stated in the map",
+    mapNodeRef: "Concepts · Applications · Claims",
+    position: { x: 600, y: 200 },
+    questions: [
+      {
+        id: "q1",
+        question: "Check this claim against the full map:",
+        leftItems: ["Microlearning is designed to fully replace traditional classroom teaching."],
+        rightItems: TFNS,
+        correctMatches: { "Microlearning is designed to fully replace traditional classroom teaching.": "false" },
+        explain: "The map presents microlearning as a supplement that blends with traditional teaching, not a replacement for it.",
+        feedbackRef: "Core Concepts"
+      },
+      {
+        id: "q2",
+        question: "Check this claim against the full map:",
+        leftItems: ["A single microlearning session typically lasts 3–10 minutes."],
+        rightItems: TFNS,
+        correctMatches: { "A single microlearning session typically lasts 3–10 minutes.": "true" },
+        explain: "The definition section gives 3–10 minutes as the typical duration of one focused burst.",
+        feedbackRef: "Core Concepts"
+      },
+      {
+        id: "q3",
+        question: "Check this claim against the full map:",
+        leftItems: ["Microlearning works best for discrete language items such as vocabulary, grammar points and pronunciation."],
+        rightItems: TFNS,
+        correctMatches: { "Microlearning works best for discrete language items such as vocabulary, grammar points and pronunciation.": "true" },
+        explain: "The classroom examples are all discrete items: vocabulary sets, single grammar points, pronunciation contrasts.",
+        feedbackRef: "ELT Applications"
+      },
+      {
+        id: "q4",
+        question: "Check this claim against the full map:",
+        leftItems: ["Spaced repetition is unrelated to microlearning effectiveness."],
+        rightItems: TFNS,
+        correctMatches: { "Spaced repetition is unrelated to microlearning effectiveness.": "false" },
+        explain: "Spacing is one of the key principles the map uses to justify short, repeated sessions.",
+        feedbackRef: "Research"
+      },
+      {
+        id: "q5",
+        question: "Check this claim against the full map:",
+        leftItems: ["The map specifies the exact number of micro-sessions learners must complete each week."],
+        rightItems: TFNS,
+        correctMatches: { "The map specifies the exact number of micro-sessions learners must complete each week.": "ns" },
+        explain: "The map discusses spacing and short sessions but never fixes a required weekly number.",
+        feedbackRef: "Design Principles"
+      },
+      {
+        id: "q6",
+        question: "Check this claim against the full map:",
+        leftItems: ["Cognitive Load Theory supports the use of microlearning in language teaching."],
+        rightItems: TFNS,
+        correctMatches: { "Cognitive Load Theory supports the use of microlearning in language teaching.": "true" },
+        explain: "Short bursts keep working memory from being overloaded, which is exactly what the theory predicts.",
+        feedbackRef: "Research"
+      },
+      {
+        id: "q7",
+        question: "Check this claim against the full map:",
+        leftItems: ["Microlearning requires expensive technology and premium apps to be implemented effectively."],
+        rightItems: TFNS,
+        correctMatches: { "Microlearning requires expensive technology and premium apps to be implemented effectively.": "false" },
+        explain: "The map notes that simple tools — flashcards, short videos, quick quizzes — are sufficient.",
+        feedbackRef: "ELT Applications"
+      },
+      {
+        id: "q8",
+        question: "Check this claim against the full map:",
+        leftItems: ["The map recommends one particular commercial app as the default tool for teachers."],
+        rightItems: TFNS,
+        correctMatches: { "The map recommends one particular commercial app as the default tool for teachers.": "ns" },
+        explain: "No single product is endorsed anywhere on the map; tool choice is left to the teacher.",
+        feedbackRef: "ELT Applications"
+      }
+    ]
+  },
+  {
+    id: 2,
+    number: "03",
+    title: "Research evidence",
+    description: "Examine research evidence more closely · optional",
+    mapNodeRef: "Research",
+    position: { x: 400, y: 500 },
+    questions: [
+      {
+        id: "q1",
+        question: "Match the research concept with how it supports microlearning in the map:",
+        leftItems: ["Mayer's Multimedia Principles"],
+        rightItems: [
+          { key: "a", text: "Explains why learners forget language items quickly after initial exposure" },
+          { key: "b", text: "Supports chunking content into short, coherent segments and avoiding redundant on-screen text" },
+          { key: "c", text: "Proves that reading long, uninterrupted texts is always superior to short bursts" }
+        ],
+        correctMatches: { "Mayer's Multimedia Principles": "b" },
+        feedbackRef: "Research"
+      },
+      {
+        id: "q2",
+        question: "Match the research concept with how it supports microlearning in the map:",
+        leftItems: ["Ebbinghaus Forgetting Curve"],
+        rightItems: [
+          { key: "a", text: "Justifies short, repeated review sessions to combat the rapid drop in retention shortly after learning" },
+          { key: "b", text: "Shows that one long, massed practice session is enough for permanent long-term memory" },
+          { key: "c", text: "Applies only to mathematics learning and has no relevance to language acquisition" }
+        ],
+        correctMatches: { "Ebbinghaus Forgetting Curve": "a" },
+        feedbackRef: "Research"
+      },
+      {
+        id: "q3",
+        question: "Match the research concept with how it supports microlearning in the map:",
+        leftItems: ["Cognitive Load Theory (Sweller)"],
+        rightItems: [
+          { key: "a", text: "Says learners should be overloaded with information to build mental resilience" },
+          { key: "b", text: "Only applies to young children learning their first language" },
+          { key: "c", text: "Explains why short bursts reduce extraneous load and aid processing of new language" }
+        ],
+        correctMatches: { "Cognitive Load Theory (Sweller)": "c" },
+        feedbackRef: "Research"
+      },
+      {
+        id: "q4",
+        question: "Match the research concept with how it supports microlearning in the map:",
+        leftItems: ["Krashen's Input Hypothesis (i+1)"],
+        rightItems: [
+          { key: "a", text: "Rejects any form of comprehensible input in language teaching" },
+          { key: "b", text: "Only works through explicit, decontextualized grammar drills" },
+          { key: "c", text: "Aligns with microlearning by delivering small, comprehensible chunks of language just above the learner's level" }
+        ],
+        correctMatches: { "Krashen's Input Hypothesis (i+1)": "c" },
+        feedbackRef: "Research"
+      },
+      {
+        id: "q5",
+        question: "Match the research concept with how it supports microlearning in the map:",
+        leftItems: ["Spaced Practice (Cepeda et al.)"],
+        rightItems: [
+          { key: "a", text: "Shows that distributed short practice sessions improve long-term retention more than massed practice" },
+          { key: "b", text: "Proves that cramming all content into one session is superior for language learning" },
+          { key: "c", text: "Only applies to motor skills and has no relevance to language acquisition" }
+        ],
+        correctMatches: { "Spaced Practice (Cepeda et al.)": "a" },
+        feedbackRef: "Research"
+      },
+      {
+        id: "q6",
+        question: "Match the research concept with how it supports microlearning in the map:",
+        leftItems: ["Retrieval Practice (Roediger & Karpicke)"],
+        rightItems: [
+          { key: "a", text: "Shows that low-stakes, frequent retrieval (e.g., quick quizzes) enhances learning more than re-reading" },
+          { key: "b", text: "Suggests avoiding all forms of assessment to reduce learner anxiety" },
+          { key: "c", text: "Only works for factual knowledge and has no application to language learning" }
+        ],
+        correctMatches: { "Retrieval Practice (Roediger & Karpicke)": "a" },
+        feedbackRef: "Research"
+      }
+    ]
+  }
+];
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+  currentTopic: null,
+  currentQuestion: 0,
+  answers: {},
+  checked: {},
+  completed: new Set(),
+  mapPosition: { x: 0, y: 0 },
+  mapZoom: 1,
+  isDragging: false,
+  dragStart: { x: 0, y: 0 }
+};
+
+topicsData.forEach(topic => {
+  state.answers[topic.id] = {};
+  state.checked[topic.id] = {};
+  topic.questions.forEach(q => {
+    state.answers[topic.id][q.id] = {};
+    state.checked[topic.id][q.id] = false;
+  });
+});
+
+// ============================================================
+// MAP RENDERING & INTERACTION
+// ============================================================
+function renderMap() {
+  const canvas = document.getElementById('mapCanvas');
+  canvas.innerHTML = '';
+
+  topicsData.forEach(topic => {
+    const card = document.createElement('div');
+    card.className = 'map-node' + (state.completed.has(topic.id) ? ' completed' : '');
+    card.style.left = topic.position.x + 'px';
+    card.style.top = topic.position.y + 'px';
+
+    card.innerHTML = `
+      <div class="node-header">
+        <div style="font-size: 1.6rem; font-weight: 700; margin-bottom: 4px;">${topic.number}</div>
+      </div>
+      <div class="node-body">
+        <div class="node-title">${topic.title}</div>
+        <div class="node-desc">${topic.description}</div>
+        <div class="node-badge">${topic.mapNodeRef}</div>
+      </div>
+    `;
+
+    card.addEventListener('click', () => openTopic(topic.id));
+    canvas.appendChild(card);
+  });
+
+  updateProgress();
+}
+
+function updateProgress() {
+  const done = state.completed.size;
+  const total = topicsData.length;
+  document.getElementById('progressInfo').textContent = `Completed sections: ${done} of ${total}`;
+}
+
+const mapContainer = document.getElementById('mapContainer');
+const mapCanvas = document.getElementById('mapCanvas');
+
+mapContainer.addEventListener('mousedown', (e) => {
+  if (e.target.closest('.map-node') || e.target.closest('.zoom-controls')) return;
+  state.isDragging = true;
+  state.dragStart = { x: e.clientX - state.mapPosition.x, y: e.clientY - state.mapPosition.y };
+  mapContainer.classList.add('dragging');
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!state.isDragging) return;
+  state.mapPosition.x = e.clientX - state.dragStart.x;
+  state.mapPosition.y = e.clientY - state.dragStart.y;
+  updateMapTransform();
+});
+
+document.addEventListener('mouseup', () => {
+  state.isDragging = false;
+  mapContainer.classList.remove('dragging');
+});
+
+function updateMapTransform() {
+  mapCanvas.style.transform = `translate(${state.mapPosition.x}px, ${state.mapPosition.y}px) scale(${state.mapZoom})`;
+}
+
+document.getElementById('zoomInBtn').addEventListener('click', () => {
+  state.mapZoom = Math.min(state.mapZoom + 0.15, 2.5);
+  updateMapTransform();
+});
+
+document.getElementById('zoomOutBtn').addEventListener('click', () => {
+  state.mapZoom = Math.max(state.mapZoom - 0.15, 0.4);
+  updateMapTransform();
+});
+
+document.getElementById('zoomResetBtn').addEventListener('click', () => {
+  state.mapZoom = 1;
+  state.mapPosition = { x: 0, y: 0 };
+  updateMapTransform();
+});
+
+// ============================================================
+// KNOWLEDGE CHECK MODAL LOGIC
+// ============================================================
+function openTopic(topicId) {
+  state.currentTopic = topicId;
+  state.currentQuestion = 0;
+  renderQuestion();
+  document.getElementById('topicModal').classList.add('show');
+}
+
+function closeTopic() {
+  document.getElementById('topicModal').classList.remove('show');
+  state.currentTopic = null;
+}
+
+document.getElementById('modalClose').addEventListener('click', closeTopic);
+
+function renderQuestion() {
+  const topic = topicsData[state.currentTopic];
+  const question = topic.questions[state.currentQuestion];
+  const isChecked = state.checked[topic.id][question.id];
+  const isShortOptions = question.rightItems === TFNS;
+
+  document.getElementById('modalTitle').textContent = `TOPIC ${topic.number}`;
+  document.getElementById('modalProgress').textContent = `${state.currentQuestion + 1} / ${topic.questions.length}`;
+
+  document.getElementById('prevBtn').disabled = state.currentQuestion === 0;
+  document.getElementById('nextBtn').disabled = state.currentQuestion === topic.questions.length - 1;
+
+  const body = document.getElementById('modalBody');
+
+  let html = `<div class="question-container">`;
+  html += `<div class="question-text">${question.question}</div>`;
+  html += `<div class="match-area">`;
+
+  // Left column (drop zones)
+  html += `<div class="match-column">`;
+  html += `<div class="match-column-title">${isShortOptions ? 'Claim' : 'Question'}</div>`;
+  question.leftItems.forEach(item => {
+    const userAnswer = state.answers[topic.id][question.id][item];
+    const correctKey = question.correctMatches[item];
+    const isCorrect = isChecked && userAnswer === correctKey;
+    const isIncorrect = isChecked && userAnswer && userAnswer !== correctKey;
+
+    html += `<div class="drop-zone ${isCorrect ? 'correct' : ''} ${isIncorrect ? 'incorrect' : ''} ${userAnswer ? 'filled' : ''}" data-item="${item}">`;
+    html += `<strong>${item}</strong>`;
+    if (userAnswer) {
+      const selectedOption = question.rightItems.find(o => o.key === userAnswer);
+      html += `<div class="matched-text">${selectedOption.text}</div>`;
+    }
+    if (isIncorrect) {
+      const correctOption = question.rightItems.find(o => o.key === correctKey);
+      html += `<div class="correct-answer-hint">✓ Correct: ${correctOption.text}</div>`;
+      html += `<div class="map-redirect-hint">💡 Revisit the "<strong>${question.feedbackRef}</strong>" section of the full map to check this information.</div>`;
+    }
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  // Right column (draggable items)
+  html += `<div class="match-column">`;
+  html += `<div class="match-column-title">${isShortOptions ? 'Choose one' : 'Available Answers'}</div>`;
+  const usedKeys = Object.values(state.answers[topic.id][question.id]);
+  question.rightItems.forEach(option => {
+    const isUsed = usedKeys.includes(option.key);
+    if (!isUsed || isChecked) {
+      html += `<div class="draggable-item ${isShortOptions ? 'short' : ''}" draggable="${!isChecked}" data-key="${option.key}">${option.text}</div>`;
+    }
+  });
+  html += `</div>`;
+
+  html += `</div>`; // match-area
+  html += `<div class="feedback-box" id="feedbackBox"></div>`;
+
+  if (!isChecked) {
+    html += `<div style="margin-top: 20px; text-align: center;">`;
+    html += `<button class="modal-nav-btn" id="checkBtn" style="padding: 10px 24px; font-size: 1rem;">Check answers</button>`;
+    html += `</div>`;
+  }
+
+  html += `</div>`; // question-container
+
+  body.innerHTML = html;
+
+  if (!isChecked) {
+    setupDragAndDrop(question);
+    document.getElementById('checkBtn').addEventListener('click', () => checkAnswers(question));
+  }
+}
+
+function setupDragAndDrop(question) {
+  const draggables = document.querySelectorAll('.draggable-item');
+  const dropZones = document.querySelectorAll('.drop-zone');
+
+  draggables.forEach(draggable => {
+    draggable.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', e.target.dataset.key);
+      e.target.classList.add('dragging');
+    });
+    draggable.addEventListener('dragend', (e) => {
+      e.target.classList.remove('dragging');
+    });
+
+    // Click / tap fallback
+    draggable.addEventListener('click', () => {
+      const key = draggable.dataset.key;
+      const zone = dropZones[0];
+      if (zone) {
+        state.answers[state.currentTopic][question.id][zone.dataset.item] = key;
+        renderQuestion();
+      }
+    });
+  });
+
+  dropZones.forEach(zone => {
+    zone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      zone.classList.add('drag-over');
+    });
+    zone.addEventListener('dragleave', () => {
+      zone.classList.remove('drag-over');
+    });
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const key = e.dataTransfer.getData('text/plain');
+      const item = zone.dataset.item;
+
+      Object.keys(state.answers[state.currentTopic][question.id]).forEach(otherItem => {
+        if (state.answers[state.currentTopic][question.id][otherItem] === key) {
+          delete state.answers[state.currentTopic][question.id][otherItem];
+        }
+      });
+
+      state.answers[state.currentTopic][question.id][item] = key;
+      renderQuestion();
+    });
+
+    // Click to clear
+    zone.addEventListener('click', () => {
+      const item = zone.dataset.item;
+      if (state.answers[state.currentTopic][question.id][item]) {
+        delete state.answers[state.currentTopic][question.id][item];
+        renderQuestion();
+      }
+    });
+  });
+}
+
+function checkAnswers(question) {
+  const topic = topicsData[state.currentTopic];
+  const answers = state.answers[topic.id][question.id];
+
+  const unanswered = question.leftItems.filter(item => !answers[item]);
+  if (unanswered.length > 0) {
+    showFeedback('error', 'Incomplete', `Please match all items. You have ${unanswered.length} item${unanswered.length > 1 ? 's' : ''} left.`);
+    return;
+  }
+
+  let correctCount = 0;
+  question.leftItems.forEach(item => {
+    if (answers[item] === question.correctMatches[item]) correctCount++;
+  });
+
+  const total = question.leftItems.length;
+  state.checked[topic.id][question.id] = true;
+
+  const allCorrect = topic.questions.every(q => {
+    const qAnswers = state.answers[topic.id][q.id];
+    return q.leftItems.every(item => qAnswers[item] === q.correctMatches[item]);
+  });
+
+  if (allCorrect) {
+    state.completed.add(topic.id);
+    renderMap();
+  }
+
+  renderQuestion();
+
+  const explanation = question.explain ? `<p class="explain">${question.explain}</p>` : '';
+
+  if (correctCount === total) {
+    showFeedback('success', `Correct — ${correctCount}/${total}`, `This matches the full map.${explanation}`);
+  } else if (correctCount > 0) {
+    showFeedback('partial', `${correctCount}/${total} correct`, `Check the hint above and revisit the suggested section of the full map.${explanation}`);
+  } else {
+    showFeedback('error', `${correctCount}/${total} correct`, `Go back to the "<strong>${question.feedbackRef}</strong>" section of the full map and re-read it before trying again.${explanation}`);
+  }
+}
+
+function showFeedback(level, title, message) {
+  const fb = document.getElementById('feedbackBox');
+  fb.className = `feedback-box show ${level}`;
+  fb.innerHTML = `<h3>${title}</h3><p>${message}</p>`;
+}
+
+// Navigation
+document.getElementById('prevBtn').addEventListener('click', () => {
+  if (state.currentQuestion > 0) {
+    state.currentQuestion--;
+    renderQuestion();
+  }
+});
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+  const topic = topicsData[state.currentTopic];
+  if (state.currentQuestion < topic.questions.length - 1) {
+    state.currentQuestion++;
+    renderQuestion();
+  }
+});
+
+// ============================================================
+// HEADER CONTROLS
+// ============================================================
+document.getElementById('mapBtn').addEventListener('click', closeTopic);
+
+document.getElementById('outlineBtn').addEventListener('click', () => {
+  alert('Map Outline:\n\n01. Why do we use microlearning? (design, benefits, risks)\n02. Check predictions & locate details (True / False / Not stated)\n03. Research evidence (optional)');
+});
+
+document.getElementById('firstTopicBtn').addEventListener('click', () => openTopic(0));
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Reset all knowledge check answers? This cannot be undone.')) {
+    topicsData.forEach(topic => {
+      state.answers[topic.id] = {};
+      state.checked[topic.id] = {};
+      topic.questions.forEach(q => {
+        state.answers[topic.id][q.id] = {};
+        state.checked[topic.id][q.id] = false;
+      });
+    });
+    state.completed.clear();
+    renderMap();
+    if (state.currentTopic !== null) renderQuestion();
+  }
+});
+
+document.getElementById('howToUseBtn').addEventListener('click', () => {
+  document.getElementById('howToUseModal').classList.add('show');
+});
+
+document.getElementById('howToUseClose').addEventListener('click', () => {
+  document.getElementById('howToUseModal').classList.remove('show');
+});
+
+document.getElementById('topicModal').addEventListener('click', (e) => {
+  if (e.target.id === 'topicModal') closeTopic();
+});
+
+document.getElementById('howToUseModal').addEventListener('click', (e) => {
+  if (e.target.id === 'howToUseModal') {
+    document.getElementById('howToUseModal').classList.remove('show');
+  }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+renderMap();
+updateMapTransform();
+</script>
+
+</body>
+</html>
